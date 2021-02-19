@@ -1,0 +1,91 @@
+class Rectangle(object):
+    def __init__(self, ix, iy, iw, ih):
+        self.x = ix
+        self.y = iy
+        self.w = iw
+        self.h = ih
+        
+    def contains(self, p):
+        return (
+            p.pos.x >= self.x - self.w and
+            p.pos.x < self.x + self.w and
+            p.pos.y >= self.y - self.h and
+            p.pos.y < self.y + self.h)
+        
+    def intersects(self, area):
+        return not (
+                area.x - area.w > self.x + self.w and
+                area.x + area.w < self.x - self.w and
+                area.y - area.h > self.y + self.h and
+                area.y + area.h < self.y - self.h)
+        
+class QuadTree(object):
+    def __init__(self, boundary, n):
+        self.boundary = boundary
+        self.capacity = n
+        self.points = []
+        self.divided = False
+        self.northeast = None
+        self.northwest = None
+        self.southeast = None
+        self.southwest = None
+        
+    def refresh(self):
+        self.points = []
+        self.northeast = None
+        self.northwest = None
+        self.southeast = None
+        self.southwest = None
+        self.divided = False
+        
+    def insert(self, newPoint):
+        if not self.boundary.contains(newPoint):
+            return False
+        elif len(self.points) < self.capacity:
+            self.points.append(newPoint)
+            return True
+        else:
+            wh = self.boundary.w*.5
+            hh = self.boundary.h*.5
+            x = self.boundary.x
+            y = self.boundary.y
+            x1 = x + wh
+            y1 = y + hh
+            
+            if not self.divided:
+                ne = Rectangle(x + wh, y - hh, wh, hh)
+                self.northeast = QuadTree(ne, self.capacity)
+        
+                nw = Rectangle(x - wh, y - hh, wh, hh)
+                self.northwest = QuadTree(nw, self.capacity)
+        
+                se = Rectangle(x + wh, y + hh, wh, hh)
+                self.southeast = QuadTree(se, self.capacity)
+        
+                sw = Rectangle(x - wh, y + hh, wh, hh)
+                self.southwest = QuadTree(sw, self.capacity)
+        
+                self.divided = True
+                
+            if newPoint.pos.x < x1:
+                if newPoint.pos.y < y1: self.northwest.insert(newPoint)
+                else: self.southwest.insert(newPoint)
+                
+            else:
+                if newPoint.pos.y < y1: self.northeast.insert(newPoint)
+                else: self.southeast.insert(newPoint)
+        
+    def query(self, area, found):
+        if not self.boundary.intersects(area): return
+        else:
+            for p in self.points:
+                if area.contains(p): found.append(p)
+            if self.divided:
+                self.northwest.query(area, found)
+                self.northeast.query(area, found)
+                self.southwest.query(area, found)
+                self.southeast.query(area, found)
+
+
+        return found
+    
